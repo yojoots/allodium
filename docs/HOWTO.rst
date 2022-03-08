@@ -24,11 +24,6 @@ DB Engine        A database engine package is required; two are
                  supported (see `Database Engine`_ below).
 ================ ========================
 
-Some coins need an additional package, typically for their block hash
-functions. For example, `x11_hash`_ is required for DASH. Scrypt coins
-require a Python interpreter compiled and/or linked with OpenSSL 1.1.0
-or higher.
-
 You **must** be running a non-pruning bitcoin daemon with::
 
   txindex=1

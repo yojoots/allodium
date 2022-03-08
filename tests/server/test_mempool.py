@@ -10,13 +10,13 @@ import pytest
 from aiorpcx import Event, sleep, ignore_after
 
 from electrumx.server.mempool import MemPool, MemPoolAPI
-from electrumx.lib.coins import BitcoinCash
+from electrumx.lib.coins import Bitcoin
 from electrumx.lib.hash import HASHX_LEN, hex_str_to_hash, hash_to_hex_str
 from electrumx.lib.tx import Tx, TxInput, TxOutput
 from electrumx.lib.util import OldTaskGroup
 
 
-coin = BitcoinCash
+coin = Bitcoin
 tx_hash_fn = coin.DESERIALIZER.TX_HASH_FN
 # Change seed daily
 seed(datetime.date.today().toordinal)
@@ -83,7 +83,7 @@ class API(MemPoolAPI):
         self.hashXs = [coin.hash160_to_P2PKH_hashX(hash160)
                        for hash160 in hash160s]
         prevouts = [(os.urandom(32), randrange(0, 10))
-                    for n in range (db_utxo_count)]
+                    for n in range(db_utxo_count)]
         random_value = partial(randrange, coin.VALUE_PER_COIN * 10)
         self.db_utxos = {prevout: (choice(self.hashXs), random_value())
                          for prevout in prevouts}
@@ -353,7 +353,8 @@ def test_compress_histogram():
         11: 50_000,
     }
     compact = MemPool._compress_histogram(histogram, bin_size=100_000)
-    assert compact == [(10.1, 51000), (10, 500000), (1.1, 70000), (1.0, 10000000)]
+    assert compact == [(10.1, 51000), (10, 500000),
+                       (1.1, 70000), (1.0, 10000000)]
 
 
 @pytest.mark.asyncio

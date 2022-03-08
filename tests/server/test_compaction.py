@@ -15,8 +15,8 @@ def create_histories(history, hashX_count=100):
     '''Creates a bunch of random transaction histories, and write them
     to disk in a series of small flushes.'''
     hashXs = [urandom(HASHX_LEN) for n in range(hashX_count)]
-    mk_array = lambda : array.array('Q')
-    histories = {hashX : mk_array() for hashX in hashXs}
+    def mk_array(): return array.array('Q')
+    histories = {hashX: mk_array() for hashX in hashXs}
     unflushed = history.unflushed
     tx_num = 0
     while hashXs:
@@ -119,7 +119,7 @@ async def test_compaction(tmpdir):
     environ.clear()
     environ['DB_DIRECTORY'] = db_dir
     environ['DAEMON_URL'] = ''
-    environ['COIN'] = 'BitcoinSV'
+    environ['COIN'] = 'Bitcoin'
     db = DB(Env())
     await db.open_for_serving()
     history = db.history

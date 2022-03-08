@@ -174,7 +174,8 @@ class SessionManager:
     def _ssl_context(self):
         if self._sslc is None:
             self._sslc = ssl.SSLContext(ssl.PROTOCOL_TLS)
-            self._sslc.load_cert_chain(self.env.ssl_certfile, keyfile=self.env.ssl_keyfile)
+            self._sslc.load_cert_chain(
+                self.env.ssl_certfile, keyfile=self.env.ssl_keyfile)
         return self._sslc
 
     async def _start_servers(self, services):
@@ -195,14 +196,17 @@ class SessionManager:
             # FIXME: pass the service not the kind
             session_factory = partial(session_class, self, self.db, self.mempool,
                                       self.peer_mgr, kind)
-            host = None if service.host == 'all_interfaces' else str(service.host)
+            host = None if service.host == 'all_interfaces' else str(
+                service.host)
             try:
                 self.servers[service] = await serve(session_factory, host,
                                                     service.port, ssl=sslc)
             except OSError as e:    # don't suppress CancelledError
-                self.logger.error(f'{kind} server failed to listen on {service.address}: {e}')
+                self.logger.error(
+                    f'{kind} server failed to listen on {service.address}: {e}')
             else:
-                self.logger.info(f'{kind} server listening on {service.address}')
+                self.logger.info(
+                    f'{kind} server listening on {service.address}')
 
     async def _start_external_servers(self):
         '''Start listening on TCP and SSL ports, but only if the respective
@@ -258,7 +262,8 @@ class SessionManager:
 
     async def _disconnect_sessions(self, sessions, reason, *, force_after=1.0):
         if sessions:
-            session_ids = ', '.join(str(session.session_id) for session in sessions)
+            session_ids = ', '.join(str(session.session_id)
+                                    for session in sessions)
             self.logger.info(f'{reason} session ids {session_ids}')
             for session in sessions:
                 await self._task_group.spawn(session.close(force_after=force_after))
@@ -277,7 +282,8 @@ class SessionManager:
         '''Clear certain caches on chain reorgs.'''
         while True:
             await self.bp.backed_up_event.wait()
-            self.logger.info(f'reorg signalled; clearing tx_hashes and merkle caches')
+            self.logger.info(
+                f'reorg signalled; clearing tx_hashes and merkle caches')
             self._reorg_count += 1
             self._tx_hashes_cache.clear()
             self._merkle_cache.clear()
@@ -305,7 +311,8 @@ class SessionManager:
             # cost_decay_per_sec.
             for session in self.sessions:
                 # Subs have an on-going cost so decay more slowly with more subs
-                session.cost_decay_per_sec = hard_limit / (10000 + 5 * session.sub_count())
+                session.cost_decay_per_sec = hard_limit / \
+                    (10000 + 5 * session.sub_count())
                 session.recalc_concurrency()
 
     def _get_info(self):
@@ -395,7 +402,8 @@ class SessionManager:
         if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
             raise RPCError(BAD_REQUEST, 'expected a list of session IDs')
 
-        sessions_by_id = {session.session_id: session for session in self.sessions}
+        sessions_by_id = {
+            session.session_id: session for session in self.sessions}
         groups_by_name = self.session_groups
 
         sessions = set()
@@ -446,7 +454,8 @@ class SessionManager:
             result.append('disconnecting all sessions')
         else:
             sessions = refs.sessions
-            result.extend(f'disconnecting session {session.session_id}' for session in sessions)
+            result.extend(
+                f'disconnecting session {session.session_id}' for session in sessions)
             for group in refs.groups:
                 result.append(f'disconnecting group {group.name}')
                 sessions.update(group.sessions)
@@ -464,7 +473,8 @@ class SessionManager:
         result = []
 
         def add_result(text, value):
-            result.append(f'logging {text}' if value else f'not logging {text}')
+            result.append(
+                f'logging {text}' if value else f'not logging {text}')
 
         if 'all' in refs.specials:
             for session in self.sessions:
@@ -613,13 +623,17 @@ class SessionManager:
             session_class.processing_timeout = self.env.request_timeout
 
             self.logger.info(f'max session count: {self.env.max_sessions:,d}')
-            self.logger.info(f'session timeout: {self.env.session_timeout:,d} seconds')
-            self.logger.info(f'session cost hard limit {self.env.cost_hard_limit:,d}')
-            self.logger.info(f'session cost soft limit {self.env.cost_soft_limit:,d}')
+            self.logger.info(
+                f'session timeout: {self.env.session_timeout:,d} seconds')
+            self.logger.info(
+                f'session cost hard limit {self.env.cost_hard_limit:,d}')
+            self.logger.info(
+                f'session cost soft limit {self.env.cost_soft_limit:,d}')
             self.logger.info(f'bandwidth unit cost {self.env.bw_unit_cost:,d}')
             self.logger.info(f'request sleep {self.env.request_sleep:,d}ms')
             self.logger.info(f'request timeout {self.env.request_timeout:,d}s')
-            self.logger.info(f'initial concurrent {self.env.initial_concurrent:,d}')
+            self.logger.info(
+                f'initial concurrent {self.env.initial_concurrent:,d}')
 
             self.logger.info(f'max response size {self.env.max_send:,d} bytes')
             if self.env.drop_client is not None:
@@ -795,11 +809,13 @@ class SessionManager:
                 return None
             if isinstance(host, IPv4Address):
                 subnet_size = self.env.session_group_by_subnet_ipv4
-                subnet = IPv4Network(host).supernet(prefixlen_diff=32 - subnet_size)
+                subnet = IPv4Network(host).supernet(
+                    prefixlen_diff=32 - subnet_size)
                 return str(subnet)
             elif isinstance(host, IPv6Address):
                 subnet_size = self.env.session_group_by_subnet_ipv6
-                subnet = IPv6Network(host).supernet(prefixlen_diff=128 - subnet_size)
+                subnet = IPv6Network(host).supernet(
+                    prefixlen_diff=128 - subnet_size)
                 return str(subnet)
         return 'unknown_addr'
 
@@ -999,7 +1015,8 @@ class ElectrumX(SessionBase):
         ip_addr = self.remote_address().host
         groups = self.session_mgr.sessions[self]
         group_names = [group.name for group in groups]
-        self.logger.info(f"closing session over res usage. ip: {ip_addr}. groups: {group_names}")
+        self.logger.info(
+            f"closing session over res usage. ip: {ip_addr}. groups: {group_names}")
 
     def sub_count(self):
         return len(self.hashX_subs)
@@ -1381,9 +1398,11 @@ class ElectrumX(SessionBase):
         if crash_client_ver:
             client_ver = util.protocol_tuple(self.client)
             is_old_protocol = ptuple is None or ptuple <= (1, 2)
-            is_old_client = client_ver != (0,) and client_ver <= crash_client_ver
+            is_old_client = client_ver != (
+                0,) and client_ver <= crash_client_ver
             if is_old_protocol and is_old_client:
-                self.logger.info(f'attempting to crash old client with version {self.client}')
+                self.logger.info(
+                    f'attempting to crash old client with version {self.client}')
                 # this can crash electrum client 2.6 <= v < 3.1.2
                 await self.send_notification('blockchain.relayfee', ())
                 # this can crash electrum client (v < 2.8.2) UNION (3.0.0 <= v < 3.3.0)
@@ -1517,268 +1536,3 @@ class LocalRPC(SessionBase):
 
     def protocol_version_string(self):
         return 'RPC'
-
-
-class DashElectrumX(ElectrumX):
-    '''A TCP server that handles incoming Electrum Dash connections.'''
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.mns = set()
-        self.mn_cache_height = 0
-        self.mn_cache = []
-
-    def set_request_handlers(self, ptuple):
-        super().set_request_handlers(ptuple)
-        self.request_handlers.update({
-            'masternode.announce.broadcast':
-            self.masternode_announce_broadcast,
-            'masternode.subscribe': self.masternode_subscribe,
-            'masternode.list': self.masternode_list,
-            'protx.diff': self.protx_diff,
-            'protx.info': self.protx_info,
-        })
-
-    async def notify(self, touched, height_changed):
-        '''Notify the client about changes in masternode list.'''
-        await super().notify(touched, height_changed)
-        for mn in self.mns.copy():
-            status = await self.daemon_request('masternode_list',
-                                               ('status', mn))
-            await self.send_notification('masternode.subscribe',
-                                         (mn, status.get(mn)))
-
-    # Masternode command handlers
-    async def masternode_announce_broadcast(self, signmnb):
-        '''Pass through the masternode announce message to be broadcast
-        by the daemon.
-
-        signmnb: signed masternode broadcast message.'''
-        try:
-            return await self.daemon_request('masternode_broadcast',
-                                             ('relay', signmnb))
-        except DaemonError as e:
-            error, = e.args
-            message = error['message']
-            self.logger.info(f'masternode_broadcast: {message}')
-            raise RPCError(BAD_REQUEST, 'the masternode broadcast was '
-                           f'rejected.\n\n{message}\n[{signmnb}]')
-
-    async def masternode_subscribe(self, collateral):
-        '''Returns the status of masternode.
-
-        collateral: masternode collateral.
-        '''
-        result = await self.daemon_request('masternode_list',
-                                           ('status', collateral))
-        if result is not None:
-            self.mns.add(collateral)
-            return result.get(collateral)
-        return None
-
-    async def masternode_list(self, payees):
-        '''
-        Returns the list of masternodes.
-
-        payees: a list of masternode payee addresses.
-        '''
-        if not isinstance(payees, list):
-            raise RPCError(BAD_REQUEST, 'expected a list of payees')
-
-        def get_masternode_payment_queue(mns):
-            '''Returns the calculated position in the payment queue for all the
-            valid masterernodes in the given mns list.
-
-            mns: a list of masternodes information.
-            '''
-            now = int(datetime.datetime.utcnow().strftime("%s"))
-            mn_queue = []
-
-            # Only ENABLED masternodes are considered for the list.
-            for line in mns:
-                mnstat = mns[line].split()
-                if mnstat[0] == 'ENABLED':
-                    # if last paid time == 0
-                    if int(mnstat[5]) == 0:
-                        # use active seconds
-                        mnstat.append(int(mnstat[4]))
-                    else:
-                        # now minus last paid
-                        delta = now - int(mnstat[5])
-                        # if > active seconds, use active seconds
-                        if delta >= int(mnstat[4]):
-                            mnstat.append(int(mnstat[4]))
-                        # use active seconds
-                        else:
-                            mnstat.append(delta)
-                    mn_queue.append(mnstat)
-            mn_queue = sorted(mn_queue, key=lambda x: x[8], reverse=True)
-            return mn_queue
-
-        def get_payment_position(payment_queue, address):
-            '''
-            Returns the position of the payment list for the given address.
-
-            payment_queue: position in the payment queue for the masternode.
-            address: masternode payee address.
-            '''
-            position = -1
-            for pos, mn in enumerate(payment_queue, start=1):
-                if mn[2] == address:
-                    position = pos
-                    break
-            return position
-
-        # Accordingly with the masternode payment queue, a custom list
-        # with the masternode information including the payment
-        # position is returned.
-        cache = self.session_mgr.mn_cache
-        if not cache or self.session_mgr.mn_cache_height != self.db.db_height:
-            full_mn_list = await self.daemon_request('masternode_list',
-                                                     ('full',))
-            mn_payment_queue = get_masternode_payment_queue(full_mn_list)
-            mn_payment_count = len(mn_payment_queue)
-            mn_list = []
-            for key, value in full_mn_list.items():
-                mn_data = value.split()
-                mn_info = {
-                    'vin': key,
-                    'status': mn_data[0],
-                    'protocol': mn_data[1],
-                    'payee': mn_data[2],
-                    'lastseen': mn_data[3],
-                    'activeseconds': mn_data[4],
-                    'lastpaidtime': mn_data[5],
-                    'lastpaidblock': mn_data[6],
-                    'ip': mn_data[7]
-                }
-                mn_info['paymentposition'] = get_payment_position(
-                    mn_payment_queue, mn_info['payee']
-                )
-                mn_info['inselection'] = (
-                    mn_info['paymentposition'] < mn_payment_count // 10
-                )
-                hashX = self.coin.address_to_hashX(mn_info['payee'])
-                balance = await self.get_balance(hashX)
-                mn_info['balance'] = (sum(balance.values())
-                                      / self.coin.VALUE_PER_COIN)
-                mn_list.append(mn_info)
-            cache.clear()
-            cache.extend(mn_list)
-            self.session_mgr.mn_cache_height = self.db.db_height
-
-        # If payees is an empty list the whole masternode list is returned
-        if payees:
-            return [mn for mn in cache if mn['payee'] in payees]
-        else:
-            return cache
-
-    async def protx_diff(self, base_height, height):
-        '''
-        Calculates a diff between two deterministic masternode lists.
-        The result also contains proof data.
-
-        base_height: The starting block height (starting from 1).
-        height: The ending block height.
-        '''
-        if not isinstance(base_height, int) or not isinstance(height, int):
-            raise RPCError(BAD_REQUEST, 'expected a int block heights')
-
-        max_height = self.db.db_height
-        if (not 1 <= base_height <= max_height or
-                not base_height <= height <= max_height):
-            raise RPCError(BAD_REQUEST,
-                           f'require 1 <= base_height {base_height:,d} <= '
-                           f'height {height:,d} <= '
-                           f'chain height {max_height:,d}')
-
-        return await self.daemon_request('protx',
-                                         ('diff', base_height, height))
-
-    async def protx_info(self, protx_hash):
-        '''
-        Returns detailed information about a deterministic masternode.
-
-        protx_hash: The hash of the initial ProRegTx
-        '''
-        if not isinstance(protx_hash, str):
-            raise RPCError(BAD_REQUEST, 'expected protx hash string')
-
-        res = await self.daemon_request('protx', ('info', protx_hash))
-        if 'wallet' in res:
-            del res['wallet']
-        return res
-
-
-class SmartCashElectrumX(DashElectrumX):
-    '''A TCP server that handles incoming Electrum-SMART connections.'''
-
-    def set_request_handlers(self, ptuple):
-        super().set_request_handlers(ptuple)
-        self.request_handlers.update({
-            'smartrewards.current': self.smartrewards_current,
-            'smartrewards.check': self.smartrewards_check
-        })
-
-    async def smartrewards_current(self):
-        '''Returns the current smartrewards info.'''
-        result = await self.daemon_request('smartrewards', ('current',))
-        if result is not None:
-            return result
-        return None
-
-    async def smartrewards_check(self, addr):
-        '''
-        Returns the status of an address
-
-        addr: a single smartcash address
-        '''
-        result = await self.daemon_request('smartrewards', ('check', addr))
-        if result is not None:
-            return result
-        return None
-
-
-class AuxPoWElectrumX(ElectrumX):
-    async def block_header(self, height, cp_height=0):
-        result = await super().block_header(height, cp_height)
-
-        # Older protocol versions don't truncate AuxPoW
-        if self.protocol_tuple < (1, 4, 1):
-            return result
-
-        # Not covered by a checkpoint; return full AuxPoW data
-        if cp_height == 0:
-            return result
-
-        # Covered by a checkpoint; truncate AuxPoW data
-        result['header'] = self.truncate_auxpow(result['header'], height)
-        return result
-
-    async def block_headers(self, start_height, count, cp_height=0):
-        result = await super().block_headers(start_height, count, cp_height)
-
-        # Older protocol versions don't truncate AuxPoW
-        if self.protocol_tuple < (1, 4, 1):
-            return result
-
-        # Not covered by a checkpoint; return full AuxPoW data
-        if cp_height == 0:
-            return result
-
-        # Covered by a checkpoint; truncate AuxPoW data
-        result['hex'] = self.truncate_auxpow(result['hex'], start_height)
-        return result
-
-    def truncate_auxpow(self, headers_full_hex, start_height):
-        height = start_height
-        headers_full = util.hex_to_bytes(headers_full_hex)
-        cursor = 0
-        headers = bytearray()
-
-        while cursor < len(headers_full):
-            headers += headers_full[cursor:cursor+self.coin.TRUNCATED_HEADER_SIZE]
-            cursor += self.db.dynamic_header_len(height)
-            height += 1
-
-        return headers.hex()

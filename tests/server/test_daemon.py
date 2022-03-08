@@ -6,25 +6,19 @@ import logging
 import pytest
 
 from aiorpcx import JSONRPCv1, JSONRPCLoose, RPCError, ignore_after, Request
-from electrumx.lib.coins import BitcoinCash, CoinError, Bitzeny, Dash
+from electrumx.lib.coins import Bitcoin, CoinError
 from electrumx.server.daemon import Daemon, FakeEstimateFeeDaemon
 
 
-coin = BitcoinCash
+coin = Bitcoin
 
 # These should be full, canonical URLs
 urls = ['http://rpc_user:rpc_pass@127.0.0.1:8332/',
         'http://rpc_user:rpc_pass@192.168.0.1:8332/']
 
 
-@pytest.fixture(params=[BitcoinCash, Bitzeny])
+@pytest.fixture(params=[Bitcoin])
 def daemon(request):
-    coin = request.param
-    return coin.DAEMON(coin, ','.join(urls))
-
-
-@pytest.fixture(params=[Dash])
-def dash_daemon(request):
     coin = request.param
     return coin.DAEMON(coin, ','.join(urls))
 
@@ -102,7 +96,7 @@ class ClientSessionGood:
 class ClientSessionBadAuth:
 
     def post(self, url, data=""):
-         return HTMLResponse('', 'Unauthorized', 401)
+        return HTMLResponse('', 'Unauthorized', 401)
 
 
 class ClientSessionWorkQueueFull(ClientSessionGood):
@@ -145,6 +139,7 @@ def in_caplog(caplog, message, count=1):
 #
 # Tests
 #
+
 
 @pytest.mark.asyncio
 async def test_set_urls_bad():
@@ -234,7 +229,8 @@ async def test_height(daemon):
 async def test_broadcast_transaction(daemon):
     raw_tx = 'deadbeef'
     tx_hash = 'hash'
-    daemon.session = ClientSessionGood(('sendrawtransaction', [raw_tx], tx_hash))
+    daemon.session = ClientSessionGood(
+        ('sendrawtransaction', [raw_tx], tx_hash))
     assert await daemon.broadcast_transaction(raw_tx) == tx_hash
 
 
@@ -260,7 +256,8 @@ async def test_mempool_hashes(daemon):
 async def test_deserialised_block(daemon):
     block_hash = 'block_hash'
     result = {'some': 'mess'}
-    daemon.session = ClientSessionGood(('getblock', [block_hash, True], result))
+    daemon.session = ClientSessionGood(
+        ('getblock', [block_hash, True], result))
     assert await daemon.deserialised_block(block_hash) == result
 
 
@@ -272,8 +269,8 @@ async def test_estimatefee(daemon):
     else:
         result = -1
     daemon.session = ClientSessionGood(
-            ('estimatesmartfee', [], method_not_found),
-            ('estimatefee', [2], result)
+        ('estimatesmartfee', [], method_not_found),
+        ('estimatefee', [2], result)
     )
     assert await daemon.estimatefee(2) == result
 
@@ -302,20 +299,15 @@ async def test_getrawtransaction(daemon):
     simple = 'tx_in_hex'
     verbose = {'hex': hex_hash, 'other': 'cruft'}
     # Test False is converted to 0 - old daemon's reject False
-    daemon.session = ClientSessionGood(('getrawtransaction', [hex_hash, 0], simple))
+    daemon.session = ClientSessionGood(
+        ('getrawtransaction', [hex_hash, 0], simple))
     assert await daemon.getrawtransaction(hex_hash) == simple
 
     # Test True is converted to 1
-    daemon.session = ClientSessionGood(('getrawtransaction', [hex_hash, 1], verbose))
+    daemon.session = ClientSessionGood(
+        ('getrawtransaction', [hex_hash, 1], verbose))
     assert await daemon.getrawtransaction(
         hex_hash, True) == verbose
-
-
-@pytest.mark.asyncio
-async def test_protx(dash_daemon):
-    protx_hash = 'deadbeaf'
-    dash_daemon.session = ClientSessionGood(('protx', ['info', protx_hash], {}))
-    assert await dash_daemon.protx(['info', protx_hash]) == {}
 
 
 # Batch tests
@@ -334,7 +326,8 @@ async def test_block_hex_hashes(daemon):
     count = 3
     hashes = [f'hex_hash{n}' for n in range(count)]
     daemon.session = ClientSessionGood(('getblockhash',
-                                        [[n] for n in range(first, first + count)],
+                                        [[n]
+                                            for n in range(first, first + count)],
                                         hashes))
     assert await daemon.block_hex_hashes(first, count) == hashes
 
@@ -358,14 +351,16 @@ async def test_get_raw_transactions(daemon):
     raw_txs_hex = ['fffefdfc', '0a0b0c0d']
     raw_txs = [bytes.fromhex(raw_tx) for raw_tx in raw_txs_hex]
     # Test 0 - old daemon's reject False
-    daemon.session = ClientSessionGood(('getrawtransaction', args_list, raw_txs_hex))
+    daemon.session = ClientSessionGood(
+        ('getrawtransaction', args_list, raw_txs_hex))
     assert await daemon.getrawtransactions(hex_hashes) == raw_txs
 
     # Test one error
     tx_not_found = RPCError(-1, 'some error message')
     results = ['ff0b7d', tx_not_found]
     raw_txs = [bytes.fromhex(results[0]), None]
-    daemon.session = ClientSessionGood(('getrawtransaction', args_list, results))
+    daemon.session = ClientSessionGood(
+        ('getrawtransaction', args_list, results))
     assert await daemon.getrawtransactions(hex_hashes) == raw_txs
 
 
@@ -386,7 +381,8 @@ async def test_workqueue_depth(daemon, caplog):
     daemon.init_retry = 0.01
     height = 125
     with caplog.at_level(logging.INFO):
-        daemon.session = ClientSessionWorkQueueFull(('getblockcount', [], height))
+        daemon.session = ClientSessionWorkQueueFull(
+            ('getblockcount', [], height))
         await daemon.height() == height
 
     assert in_caplog(caplog, "Work queue depth exceeded")
@@ -402,7 +398,8 @@ async def test_connection_error(daemon, caplog):
                                                 ('getblockcount', [], height))
         await daemon.height() == height
 
-    assert in_caplog(caplog, "connection problem - check your daemon is running")
+    assert in_caplog(
+        caplog, "connection problem - check your daemon is running")
     assert in_caplog(caplog, "connection restored")
 
 
